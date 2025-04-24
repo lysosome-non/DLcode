@@ -1,10 +1,7 @@
-import math
-import numpy as np
 import torch
 from d2l import torch as d2l
 import random
 
-from d2l.tensorflow import numpy
 
 
 def synthetic_data(w, b, num_examples):  #@save
@@ -31,3 +28,46 @@ def data_iter(batch_size, features, labels):
         yield features[batch_indices], labels[batch_indices] #  使用提取的索引从 features 和 labels 中获取当前批次的数据。
 
 # 初始化模型
+w = torch.normal(0, 0.01, size=(2,1), requires_grad=True)
+b = torch.zeros(1, requires_grad=True)
+
+# 定义模型
+def linreg(X, w, b):
+    return torch.matmul(X, w) + b
+
+# 损失函数 loss
+def squared_loss(y_hat, y):
+    return (y_hat - y.reshape(y_hat.shape))** 2 /2
+
+# 定义优化算法
+def sgd(params, lr, batch_size):
+    with torch.no_grad():
+        for param in params:
+            param -= lr * param.grad / batch_size
+            param.grad.zero_()
+## 随机梯度下降（Stochastic Gradient Descent, SGD）优化算法。
+
+# 训练
+# 初始化参数
+lr = 0.03 # 学习率，控制参数更新的步长
+num_epochs = 3 # 整个数据集被遍历的次数
+net = linreg # 模型函数（fuc）
+batch_size = 10
+loss = squared_loss #损失函数（fuc）
+
+for epoch in range(num_epochs): # 外层循环，每一轮都会遍历整个数据集
+    for X, y in data_iter(batch_size, features, labels):# 内层循环，数据读取func
+        # X 特征矩阵
+        # y标签向量，它们形状分别为(batch_size, features）和（batch——size， 1）
+        l = loss(net(X, w, b), y)  # X和y的小批量损失
+        # 因为l形状是(batch_size,1)，而不是一个标量。l中的所有元素被加到一起，
+        # 并以此计算关于[w,b]的梯度
+        l.sum().backward() # 反向传播
+        sgd([w, b], lr, batch_size)  # 使用参数的梯度更新参数
+    with torch.no_grad():# 禁用梯度计算，因为这里不需要反向传播。
+        train_l = loss(net(features, w, b), labels)
+        print(f'epoch {epoch + 1}, loss {float(train_l.mean()):f}')
+        # train_l.maen 计算平均损失
+
+print(f'w的估计误差: {true_w - w.reshape(true_w.shape)}')
+print(f'b的估计误差: {true_b - b}')
